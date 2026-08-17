@@ -1,0 +1,2895 @@
+[
+  {
+    "_id": "6a832d6455a03a9e430c196a",
+    "title": "PC in VLAN 10 Cannot Reach Server in VLAN 30",
+    "category": "VLAN",
+    "severity": "high",
+    "device_type": "Router + Switch",
+    "source_device": "PC1 (VLAN 10)",
+    "destination_device": "Server (VLAN 30)",
+    "symptoms": "PC receives an IP address but cannot reach the server in VLAN 30. The PC can ping its default gateway (192.168.10.1). Pinging 192.168.30.10 results in timeout.",
+    "topology_notes": "PC is connected to access switch SW1 (port Fa0/1, access VLAN 10). SW1 connects to router R1 via trunk link (Gi0/0). Server is in VLAN 30 connected to SW1 (port Fa0/24). R1 has subinterfaces for VLAN 10 and VLAN 20 but VLAN 30 is missing.",
+    "show_commands": [
+      {
+        "command": "show interfaces trunk",
+        "output": "Port        Mode         Encapsulation  Status        Native vlan\nGi0/0       on           802.1q         trunking      1\n\nPort        Vlans allowed on trunk\nGi0/0       1-29,31-4094\n\nPort        Vlans allowed and active in management domain\nGi0/0       1,10,20",
+        "_id": "6a832d6455a03a9e430c196b"
+      },
+      {
+        "command": "show vlan brief",
+        "output": "VLAN Name                             Status    Ports\n---- -------------------------------- --------- -------------------------------\n1    default                          active    \n10   STUDENT                          active    Fa0/1, Fa0/2\n20   FACULTY                          active    Fa0/3, Fa0/4\n30   SERVER                           active    Fa0/24",
+        "_id": "6a832d6455a03a9e430c196c"
+      },
+      {
+        "command": "show ip route",
+        "output": "Codes: C - connected, L - local\n\n      192.168.10.0/24 is variably subnetted\nC     192.168.10.0/24 is directly connected, GigabitEthernet0/0.10\nL     192.168.10.1/32 is directly connected, GigabitEthernet0/0.10\n      192.168.20.0/24 is variably subnetted\nC     192.168.20.0/24 is directly connected, GigabitEthernet0/0.20",
+        "_id": "6a832d6455a03a9e430c196d"
+      }
+    ],
+    "expected_fault": "Router subinterface for VLAN 30 is missing. VLAN 30 also not in trunk allowed list.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "VLAN",
+      "Inter-VLAN Routing",
+      "Router-on-a-Stick"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Router subinterface for VLAN 30 (GigabitEthernet0/0.30) is missing on R1. Additionally, VLAN 30 is excluded from the trunk allowed VLAN list (vlans 1-29,31-4094).",
+      "confidence": "high",
+      "confidence_score": 90,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "show ip route: No route for 192.168.30.0/24 network",
+        "show interfaces trunk: VLAN 30 excluded from trunk (vlans 1-29,31-4094)",
+        "show vlan brief: VLAN 30 SERVER exists on switch"
+      ],
+      "next_command": "show running-config | section interface GigabitEthernet0/0",
+      "fix_steps": [
+        "Add VLAN 30 to trunk: SW1(config-if)# switchport trunk allowed vlan add 30",
+        "Create subinterface: R1(config)# interface GigabitEthernet0/0.30",
+        "Set encapsulation: R1(config-subif)# encapsulation dot1Q 30",
+        "Assign IP: R1(config-subif)# ip address 192.168.30.1 255.255.255.0"
+      ],
+      "alternative_causes": [
+        "ACL blocking inter-VLAN traffic",
+        "Server default gateway misconfigured"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c196e",
+      "generated_at": "2026-08-17T15:48:52.515Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "VLAN Presence",
+          "status": "PASS",
+          "message": "VLAN 30 exists on switch"
+        },
+        {
+          "rule": "Trunk Configuration",
+          "status": "FAIL",
+          "message": "VLAN 30 excluded from trunk allowed list"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "VLAN 30 exists on switch"
+      ],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c196f",
+      "run_at": "2026-08-17T15:48:52.515Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Senior Network Engineer",
+      "explanation": "AI correctly identified both the trunk exclusion and missing subinterface on the router.",
+      "reviewed_at": "2026-08-11T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1970"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.529Z",
+    "updatedAt": "2026-08-17T15:48:52.529Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1971",
+    "title": "Native VLAN Mismatch on Inter-Switch Trunk",
+    "category": "VLAN",
+    "severity": "medium",
+    "device_type": "Switch",
+    "source_device": "SW1 (Gi0/1)",
+    "destination_device": "SW2 (Gi0/1)",
+    "symptoms": "CDP error logs flooding switch console: %CDP-4-NATIVE_VLAN_MISMATCH: Native VLAN mismatch discovered on GigabitEthernet0/1 (1) with SW2 GigabitEthernet0/1 (99). Management traffic dropping.",
+    "topology_notes": "SW1 connects to SW2 over 802.1Q trunk on Gi0/1. SW1 has default native VLAN 1, while SW2 was configured with native VLAN 99.",
+    "show_commands": [
+      {
+        "command": "show interfaces trunk",
+        "output": "Port        Mode         Encapsulation  Status        Native vlan\nGi0/1       on           802.1q         trunking      1",
+        "_id": "6a832d6455a03a9e430c1972"
+      },
+      {
+        "command": "show interfaces Gi0/1 switchport",
+        "output": "Name: Gi0/1\nAdministrative Mode: trunk\nOperational Mode: trunk\nTrunking Native Mode VLAN: 1 (default)",
+        "_id": "6a832d6455a03a9e430c1973"
+      }
+    ],
+    "expected_fault": "Native VLAN mismatch: SW1 has Native VLAN 1 whereas SW2 has Native VLAN 99.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "VLAN",
+      "Native VLAN",
+      "802.1Q",
+      "Trunk"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "802.1Q Native VLAN mismatch between SW1 (VLAN 1) and SW2 (VLAN 99) on trunk link Gi0/1. Untagged frames will leak between different VLANs causing spanning-tree loops and packet drops.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "CDP syslog reports Native VLAN mismatch (1 vs 99)",
+        "show interfaces trunk shows Native VLAN 1 on SW1"
+      ],
+      "next_command": "show running-config interface Gi0/1",
+      "fix_steps": [
+        "Align native VLAN on SW1: SW1(config-if)# switchport trunk native vlan 99",
+        "Verify CDP warnings clear: show cdp neighbors detail"
+      ],
+      "alternative_causes": [
+        "Trunk encapsulation mismatch",
+        "VTP domain mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1974",
+      "generated_at": "2026-08-17T15:48:52.515Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Trunk Status",
+          "status": "PASS",
+          "message": "Trunk link operational (trunking mode)"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Trunk link active on Gi0/1"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1975",
+      "run_at": "2026-08-17T15:48:52.516Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Network Analyst",
+      "explanation": "Accurate diagnosis. Matching Native VLAN 99 on both trunk endpoints resolves CDP errors.",
+      "reviewed_at": "2026-08-12T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1976"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1977",
+    "title": "Access Port Assigned to Default VLAN 1 Instead of Finance VLAN 20",
+    "category": "VLAN",
+    "severity": "low",
+    "device_type": "Switch",
+    "source_device": "Finance PC (Fa0/5)",
+    "destination_device": "Finance Server (VLAN 20)",
+    "symptoms": "Finance user cannot connect to accounting software or print to Finance printer. PC receives 169.254.x.x APIPA address.",
+    "topology_notes": "Finance PC is plugged into switch SW1 port Fa0/5. Finance VLAN is 20 with DHCP server on 192.168.20.1.",
+    "show_commands": [
+      {
+        "command": "show vlan brief",
+        "output": "VLAN Name                             Status    Ports\n---- -------------------------------- --------- -------------------------------\n1    default                          active    Fa0/5, Fa0/6, Fa0/7\n10   STUDENT                          active    Fa0/1, Fa0/2\n20   FINANCE                          active    Fa0/3, Fa0/4",
+        "_id": "6a832d6455a03a9e430c1978"
+      }
+    ],
+    "expected_fault": "Port Fa0/5 is in VLAN 1 (default) instead of VLAN 20 FINANCE.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "VLAN",
+      "Access Port",
+      "Switchport"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Switch port Fa0/5 is assigned to default VLAN 1 rather than Finance VLAN 20. DHCP discover broadcasts cannot reach the VLAN 20 DHCP server.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "show vlan brief shows Fa0/5 active in VLAN 1",
+        "VLAN 20 exists with ports Fa0/3, Fa0/4 only"
+      ],
+      "next_command": "show running-config interface Fa0/5",
+      "fix_steps": [
+        "SW1(config)# interface Fa0/5",
+        "SW1(config-if)# switchport mode access",
+        "SW1(config-if)# switchport access vlan 20",
+        "SW1(config-if)# end"
+      ],
+      "alternative_causes": [
+        "Bad ethernet cable",
+        "NIC disabled"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1979",
+      "generated_at": "2026-08-17T15:48:52.516Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "VLAN 20 Presence",
+          "status": "PASS",
+          "message": "VLAN 20 exists in database"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "VLAN 20 is active"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c197a",
+      "run_at": "2026-08-17T15:48:52.516Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Field Tech",
+      "explanation": "Straightforward access VLAN misconfiguration.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c197b"
+    },
+    "status": "fixed",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c197c",
+    "title": "VTP Pruning Stripping VLAN 50 Across Distribution Trunk",
+    "category": "VLAN",
+    "severity": "medium",
+    "device_type": "Switch",
+    "source_device": "SW-Dist1",
+    "destination_device": "SW-Access2",
+    "symptoms": "Hosts on SW-Access2 in VLAN 50 cannot communicate with central servers. VTP is operating in Server/Client mode across the campus.",
+    "topology_notes": "SW-Dist1 is VTP server with pruning enabled. SW-Access2 had no active access ports in VLAN 50 initially, causing VTP pruning on the uplink. A new host was just plugged in.",
+    "show_commands": [
+      {
+        "command": "show interfaces trunk",
+        "output": "Port        Mode         Encapsulation  Status        Native vlan\nGi0/1       on           802.1q         trunking      1\n\nPort        Vlans in spanning tree forwarding state and not pruned\nGi0/1       1,10,20,30",
+        "_id": "6a832d6455a03a9e430c197d"
+      },
+      {
+        "command": "show vtp status",
+        "output": "VTP Version                     : 2\nConfiguration Revision          : 14\nMaximum VLANs supported locally : 255\nVTP Operating Mode              : Server\nVTP Domain Name                 : CAMPUS\nVTP Pruning Mode                : Enabled",
+        "_id": "6a832d6455a03a9e430c197e"
+      }
+    ],
+    "expected_fault": "VLAN 50 is pruned on the trunk because access switch reported no active ports in VLAN 50.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "VLAN",
+      "VTP",
+      "VTP Pruning",
+      "Trunking"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: VTP domain name is mismatched between switches or VTP password was typed incorrectly, preventing VLAN 50 database propagation.",
+      "confidence": "medium",
+      "confidence_score": 60,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "VTP status shows revision 14",
+        "VLAN 50 missing from trunk active list"
+      ],
+      "next_command": "show vtp password",
+      "fix_steps": [
+        "Reset VTP domain name: SW1(config)# vtp domain CAMPUS",
+        "Set VTP mode to transparent: SW1(config)# vtp mode transparent"
+      ],
+      "alternative_causes": [
+        "VTP password mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c197f",
+      "generated_at": "2026-08-17T15:48:52.516Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Trunk Status",
+          "status": "PASS",
+          "message": "Trunk operational"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Trunk active"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1980",
+      "run_at": "2026-08-17T15:48:52.516Z"
+    },
+    "human_review": {
+      "decision": "edited",
+      "reviewer": "Lead Network Architect",
+      "corrected_response": {
+        "root_cause": "VTP Pruning is enabled globally and dynamically pruned VLAN 50 from trunk Gi0/1 because SW-Access2 did not have an active access port in VLAN 50. The VTP domain and revision are actually fine.",
+        "osi_layer": "Layer 2 (Data Link)",
+        "fix_steps": [
+          "Verify VLAN 50 exists on SW-Access2: show vlan brief",
+          "Assign user port to VLAN 50 to trigger VTP join: switchport access vlan 50",
+          "Or clear pruning for VLAN 50: switchport trunk pruning vlan remove 50",
+          "Verify forwarding state: show interfaces Gi0/1 trunk"
+        ]
+      },
+      "explanation": "AI MISDIAGNOSIS (Responsible AI): AI claimed VTP domain name mismatch. The show vtp status clearly confirms VTP Server with domain CAMPUS is working normally. The actual root cause is dynamic VTP Pruning on the trunk.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1981"
+    },
+    "status": "edited",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1982",
+    "title": "Gateway Unreachable — Subnet Mask Mismatch (/24 vs /28)",
+    "category": "Gateway",
+    "severity": "high",
+    "device_type": "Router + PC",
+    "source_device": "PC1 (192.168.1.30)",
+    "destination_device": "Default Gateway (192.168.1.1)",
+    "symptoms": "PC cannot reach the Internet or any device outside the local switch. Pinging default gateway 192.168.1.1 returns \"Destination host unreachable\".",
+    "topology_notes": "PC IP: 192.168.1.30 255.255.255.240 (/28). Router Gi0/0 IP: 192.168.1.1 255.255.255.0 (/24).",
+    "show_commands": [
+      {
+        "command": "show ip interface brief",
+        "output": "Interface                  IP-Address      OK? Method Status                Protocol\nGigabitEthernet0/0         192.168.1.1     YES manual up                    up",
+        "_id": "6a832d6455a03a9e430c1983"
+      },
+      {
+        "command": "show running-config interface Gi0/0",
+        "output": "interface GigabitEthernet0/0\n ip address 192.168.1.1 255.255.255.0\n duplex auto\n speed auto",
+        "_id": "6a832d6455a03a9e430c1984"
+      }
+    ],
+    "expected_fault": "PC is configured with /28 mask (192.168.1.16 - 192.168.1.31) making 192.168.1.1 appear in a different subnet.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Gateway",
+      "Subnetting",
+      "IP Addressing"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Subnet mask mismatch between PC and Router. PC has 255.255.255.240 (/28), placing host .30 in subnet 192.168.1.16/28, while Gateway .1 is in 192.168.1.0/28. The PC attempts to ARP through a gateway it cannot reach.",
+      "confidence": "high",
+      "confidence_score": 92,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "Router Gi0/0 has 192.168.1.1 /24",
+        "PC is at 192.168.1.30 /28"
+      ],
+      "next_command": "ipconfig /all on PC1",
+      "fix_steps": [
+        "Change PC subnet mask to 255.255.255.0 (/24)",
+        "Verify gateway ping: ping 192.168.1.1"
+      ],
+      "alternative_causes": [
+        "Cable unplugged",
+        "Port disabled"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1985",
+      "generated_at": "2026-08-17T15:48:52.516Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Gi0/0 is up"
+        },
+        {
+          "rule": "Subnet Mask Validation",
+          "status": "PASS",
+          "message": "Standard subnet masks in use"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Interface Gi0/0 is up"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1986",
+      "run_at": "2026-08-17T15:48:52.516Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "L2 Network Engineer",
+      "explanation": "Verified. Changing PC subnet mask to 255.255.255.0 restored gateway reachability immediately.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1987"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1988",
+    "title": "HSRP Split Brain — ACL Blocking UDP 1985 Hellos",
+    "category": "Gateway",
+    "severity": "critical",
+    "device_type": "Router",
+    "source_device": "R1 (Active)",
+    "destination_device": "R2 (Standby)",
+    "symptoms": "Both R1 and R2 are in HSRP \"Active\" state simultaneously on VLAN 10 (Virtual IP 192.168.10.254). Duplicate MAC address warnings on LAN switches.",
+    "topology_notes": "R1 and R2 participate in HSRP group 10 on interface Gi0/0.10. An access-list was recently applied on R2 GigabitEthernet0/0.10.",
+    "show_commands": [
+      {
+        "command": "show standby brief",
+        "output": "                     P indicates configured to preempt.\n                     |\nInterface   Grp  Pri P State   Active          Standby         Virtual IP\nGi0/0.10    10   110 P Active  local           unknown         192.168.10.254",
+        "_id": "6a832d6455a03a9e430c1989"
+      },
+      {
+        "command": "show access-lists",
+        "output": "Extended IP access list 100\n    10 permit tcp any any eq 80\n    20 permit tcp any any eq 443\n    30 deny ip any any (142 matches)",
+        "_id": "6a832d6455a03a9e430c198a"
+      }
+    ],
+    "expected_fault": "ACL 100 inbound on R2 subinterface denies HSRP UDP port 1985 multicast packets (224.0.0.2).",
+    "expected_osi_layer": "Layer 3 / Layer 4",
+    "concept_tag": [
+      "Gateway",
+      "HSRP",
+      "First Hop Redundancy",
+      "ACL"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: HSRP Group number mismatch between R1 and R2 or HSRP priority conflict.",
+      "confidence": "medium",
+      "confidence_score": 55,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "Both routers report Active state",
+        "Standby shows unknown"
+      ],
+      "next_command": "show running-config interface Gi0/0.10",
+      "fix_steps": [
+        "Change HSRP priority on R2: standby 10 priority 90",
+        "Re-enable preemption on R1"
+      ],
+      "alternative_causes": [
+        "HSRP version mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c198b",
+      "generated_at": "2026-08-17T15:48:52.517Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "ACL Deny Check",
+          "status": "FAIL",
+          "message": "ACL contains deny statement with active matches"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c198c",
+      "run_at": "2026-08-17T15:48:52.517Z"
+    },
+    "human_review": {
+      "decision": "edited",
+      "reviewer": "Senior Infrastructure Engineer",
+      "corrected_response": {
+        "root_cause": "Extended ACL 100 applied inbound on R2 Gi0/0.10 lacks a permit rule for HSRP multicast traffic (UDP port 1985 to 224.0.0.2 / 224.0.0.102). R2 never hears R1 hellos and enters Active state.",
+        "osi_layer": "Layer 4 (Transport)",
+        "fix_steps": [
+          "Add HSRP permit rule to ACL 100: R2(config)# ip access-list extended 100",
+          "R2(config-ext-nacl)# 25 permit udp any host 224.0.0.2 eq 1985",
+          "R2(config-ext-nacl)# 26 permit udp any host 224.0.0.102 eq 1985",
+          "Verify HSRP state converges: R2# show standby brief"
+        ]
+      },
+      "explanation": "AI MISDIAGNOSIS (Responsible AI): AI guessed HSRP group mismatch, failing to correlate the ACL 100 deny matches on the interface. Adding UDP 1985 permit statement immediately resolved the dual-active state.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c198d"
+    },
+    "status": "edited",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c198e",
+    "title": "Proxy ARP Disabled on Gateway Router Interface",
+    "category": "Gateway",
+    "severity": "low",
+    "device_type": "Router",
+    "source_device": "Legacy Host A",
+    "destination_device": "Host B (Remote Subnet)",
+    "symptoms": "Legacy client configured without a default gateway fails to communicate outside the subnet. \"no ip proxy-arp\" was applied during security hardening.",
+    "topology_notes": "Host A (192.168.1.50/24) has no default gateway configured, relying on Proxy ARP from Router R1 (192.168.1.1).",
+    "show_commands": [
+      {
+        "command": "show ip interface GigabitEthernet0/0",
+        "output": "GigabitEthernet0/0 is up, line protocol is up\n  Internet address is 192.168.1.1/24\n  Broadcast address is 255.255.255.255\n  Proxy ARP is disabled",
+        "_id": "6a832d6455a03a9e430c198f"
+      }
+    ],
+    "expected_fault": "Proxy ARP is disabled on Gi0/0, preventing unconfigured legacy clients from resolving remote IPs.",
+    "expected_osi_layer": "Layer 2 / Layer 3",
+    "concept_tag": [
+      "Gateway",
+      "Proxy ARP",
+      "Default Gateway"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Proxy ARP is disabled on router interface Gi0/0. Legacy devices configured without an explicit default gateway cannot resolve MAC addresses for remote destinations.",
+      "confidence": "high",
+      "confidence_score": 88,
+      "osi_layer": "Layer 2 / Layer 3",
+      "evidence": [
+        "show ip interface Gi0/0 confirms Proxy ARP is disabled"
+      ],
+      "next_command": "ipconfig on Host A",
+      "fix_steps": [
+        "Best Practice: Configure explicit default gateway 192.168.1.1 on Host A",
+        "Or temporarily re-enable Proxy ARP: R1(config-if)# ip proxy-arp"
+      ],
+      "alternative_causes": [
+        "Missing static route"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1990",
+      "generated_at": "2026-08-17T15:48:52.517Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Gi0/0 is up"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Interface operational"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1991",
+      "run_at": "2026-08-17T15:48:52.517Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "System Administrator",
+      "explanation": "Configuring default gateway on Host A is the proper permanent solution.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1992"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1993",
+    "title": "DHCP Pool Exhaustion in Engineering Subnet",
+    "category": "DHCP",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "Engineering Laptop",
+    "destination_device": "DHCP Server (R1)",
+    "symptoms": "New laptops joining VLAN 20 cannot acquire IP addresses. Existing devices retain communication until lease expiration.",
+    "topology_notes": "DHCP pool POOL_ENG configured with 192.168.20.0/24. 253 addresses leased.",
+    "show_commands": [
+      {
+        "command": "show ip dhcp pool",
+        "output": "Pool POOL_ENG :\n Total addresses                 : 254\n Leased addresses                : 254\n Excluded addresses              : 0\n Pending event                   : none\n 1 subnet is currently in the subnet list\n network 192.168.20.0 255.255.255.0",
+        "_id": "6a832d6455a03a9e430c1994"
+      },
+      {
+        "command": "show ip dhcp conflict",
+        "output": "IP address        Detection method   Detection time\n-- No conflicts --",
+        "_id": "6a832d6455a03a9e430c1995"
+      }
+    ],
+    "expected_fault": "DHCP pool POOL_ENG is 100% utilized (254 of 254 leased).",
+    "expected_osi_layer": "Layer 7 (Application)",
+    "concept_tag": [
+      "DHCP",
+      "DHCP Pool",
+      "IP Lease"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "DHCP address pool POOL_ENG on R1 is completely exhausted (254/254 active leases). No free IP addresses remain for new clients.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 7 (Application)",
+      "evidence": [
+        "show ip dhcp pool shows Leased addresses: 254 out of 254"
+      ],
+      "next_command": "show ip dhcp binding",
+      "fix_steps": [
+        "Clear inactive leases: clear ip dhcp binding *",
+        "Reduce lease duration: R1(config-dhcp)# lease 0 8 0 (8 hours)",
+        "Expand subnet mask from /24 to /23 or configure secondary pool"
+      ],
+      "alternative_causes": [
+        "DHCP snooping rate limiting"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1996",
+      "generated_at": "2026-08-17T15:48:52.517Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "DHCP Relay",
+          "status": "PASS",
+          "message": "DHCP pool active"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c1997",
+      "run_at": "2026-08-17T15:48:52.517Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "NOC Lead",
+      "explanation": "Accurate. Reduced lease time to 4 hours and cleared old bindings.",
+      "reviewed_at": "2026-08-12T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1998"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1999",
+    "title": "Missing IP Helper-Address for Remote DHCP Relay",
+    "category": "DHCP",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "VLAN 30 Clients",
+    "destination_device": "Central DHCP Server (10.0.0.5)",
+    "symptoms": "Clients in VLAN 30 fail to receive DHCP leases. Central DHCP server 10.0.0.5 shows zero DHCP discover requests received from 192.168.30.0 subnet.",
+    "topology_notes": "VLAN 30 gateway resides on Router R1 subinterface Gi0/0.30 (192.168.30.1). DHCP server is located across the WAN on 10.0.0.5.",
+    "show_commands": [
+      {
+        "command": "show running-config interface Gi0/0.30",
+        "output": "interface GigabitEthernet0/0.30\n encapsulation dot1Q 30\n ip address 192.168.30.1 255.255.255.0",
+        "_id": "6a832d6455a03a9e430c199a"
+      }
+    ],
+    "expected_fault": "Subinterface Gi0/0.30 is missing \"ip helper-address 10.0.0.5\".",
+    "expected_osi_layer": "Layer 3 / Layer 7",
+    "concept_tag": [
+      "DHCP",
+      "DHCP Relay",
+      "IP Helper-Address"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: Central DHCP server service has stopped or firewall is blocking UDP port 67/68 across the WAN.",
+      "confidence": "medium",
+      "confidence_score": 65,
+      "osi_layer": "Layer 7 (Application)",
+      "evidence": [
+        "Server logs show 0 discover packets",
+        "Clients receive no lease"
+      ],
+      "next_command": "ping 10.0.0.5 from R1",
+      "fix_steps": [
+        "Restart DHCP service on Windows/Linux server",
+        "Verify WAN firewall allows UDP 67"
+      ],
+      "alternative_causes": [
+        "DHCP pool full"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c199b",
+      "generated_at": "2026-08-17T15:48:52.517Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "DHCP Relay",
+          "status": "WARNING",
+          "message": "DHCP relay not confirmed — verify ip helper-address"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c199c",
+      "run_at": "2026-08-17T15:48:52.517Z"
+    },
+    "human_review": {
+      "decision": "rejected",
+      "reviewer": "Senior Network Engineer",
+      "corrected_response": {
+        "root_cause": "Router R1 subinterface Gi0/0.30 lacks \"ip helper-address 10.0.0.5\". Client broadcast DISCOVER packets are dropped at the router rather than being unicast forwarded to the DHCP server.",
+        "osi_layer": "Layer 3 (Network)",
+        "fix_steps": [
+          "R1(config)# interface GigabitEthernet0/0.30",
+          "R1(config-subif)# ip helper-address 10.0.0.5",
+          "R1(config-subif)# end",
+          "Verify: show running-config interface Gi0/0.30"
+        ]
+      },
+      "explanation": "AI REJECTION (Responsible AI): AI hallucinated server crash and WAN firewall blocks. The running config clearly shows Gi0/0.30 has no ip helper-address configured.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c199d"
+    },
+    "status": "rejected",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c199e",
+    "title": "DHCP Snooping Untrusted Uplink Dropping DHCP Offers",
+    "category": "DHCP",
+    "severity": "high",
+    "device_type": "Switch",
+    "source_device": "Access Switch SW1 (Gi0/1)",
+    "destination_device": "DHCP Server on Core",
+    "symptoms": "DHCP Snooping enabled on SW1. All clients stopped getting IP addresses immediately after feature activation. Console logs: %DHCP_SNOOPING-5-DHCP_OFFER_DROPPED.",
+    "topology_notes": "SW1 Gi0/1 is the uplink to the Core Switch where DHCP server is connected. DHCP Snooping is enabled on VLAN 10,20.",
+    "show_commands": [
+      {
+        "command": "show ip dhcp snooping",
+        "output": "Switch DHCP snooping is enabled\nDHCP snooping is configured on following VLANs:\n10,20\nInsertion of option 82 is enabled\n\nInterface                  Trusted    Rate limit (pps)\n------------------------   -------    ----------------",
+        "_id": "6a832d6455a03a9e430c199f"
+      }
+    ],
+    "expected_fault": "Uplink port Gi0/1 is not configured as trusted (ip dhcp snooping trust).",
+    "expected_osi_layer": "Layer 2 / Layer 7",
+    "concept_tag": [
+      "DHCP",
+      "DHCP Snooping",
+      "Layer 2 Security"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "DHCP Snooping is enabled on SW1, but uplink interface Gi0/1 is untrusted. DHCP Snooping drops all server responses (DHCPOFFER, DHCPACK) arriving on untrusted ports.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "show ip dhcp snooping shows 0 trusted interfaces",
+        "Syslog indicates DHCP_OFFER_DROPPED"
+      ],
+      "next_command": "show running-config interface Gi0/1",
+      "fix_steps": [
+        "SW1(config)# interface GigabitEthernet0/1",
+        "SW1(config-if)# ip dhcp snooping trust",
+        "SW1(config-if)# end"
+      ],
+      "alternative_causes": [
+        "Option 82 sub-option mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19a0",
+      "generated_at": "2026-08-17T15:48:52.518Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "DHCP Relay",
+          "status": "PASS",
+          "message": "DHCP snooping validated"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "DHCP configuration inspected"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c19a1",
+      "run_at": "2026-08-17T15:48:52.518Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Security Engineer",
+      "explanation": "Accurate diagnosis. Uplink must be trusted for DHCP Snooping to permit server responses.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19a2"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19a3",
+    "title": "DNS Resolution Failing — Client DNS IP Set to Non-Existent Host",
+    "category": "DNS",
+    "severity": "medium",
+    "device_type": "PC + Router",
+    "source_device": "PC1",
+    "destination_device": "DNS Server (192.168.1.10)",
+    "symptoms": "Users can ping external IPs (8.8.8.8) but cannot browse websites by name (e.g. www.cisco.com fails). nslookup times out after 2 seconds.",
+    "topology_notes": "LAN subnet 192.168.1.0/24. Actual DNS server is 192.168.1.10. PC static configuration has DNS set to 192.168.1.254 (non-existent).",
+    "show_commands": [
+      {
+        "command": "show running-config | section dhcp",
+        "output": "ip dhcp pool LAN_POOL\n network 192.168.1.0 255.255.255.0\n default-router 192.168.1.1\n dns-server 192.168.1.254",
+        "_id": "6a832d6455a03a9e430c19a4"
+      }
+    ],
+    "expected_fault": "DHCP pool configures DNS server as 192.168.1.254 instead of 192.168.1.10.",
+    "expected_osi_layer": "Layer 7 (Application)",
+    "concept_tag": [
+      "DNS",
+      "DHCP Options",
+      "Name Resolution"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "DHCP pool LAN_POOL on router advertises invalid DNS server 192.168.1.254. Hosts cannot resolve domain names despite valid IP routing to external destinations.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 7 (Application)",
+      "evidence": [
+        "dns-server 192.168.1.254 configured in pool",
+        "Ping by IP succeeds"
+      ],
+      "next_command": "ping 192.168.1.254",
+      "fix_steps": [
+        "R1(config)# ip dhcp pool LAN_POOL",
+        "R1(dhcp-config)# dns-server 192.168.1.10 8.8.8.8",
+        "Clients run: ipconfig /renew"
+      ],
+      "alternative_causes": [
+        "Port 53 blocked on firewall"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19a5",
+      "generated_at": "2026-08-17T15:48:52.518Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Duplicate IP Check",
+          "status": "PASS",
+          "message": "No IP conflicts"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "DHCP pool structure valid"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c19a6",
+      "run_at": "2026-08-17T15:48:52.518Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Helpdesk Lead",
+      "explanation": "Updated DHCP pool dns-server parameter. Name resolution restored.",
+      "reviewed_at": "2026-08-12T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19a7"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19a8",
+    "title": "Router CLI Hangs on Mistyped Commands (Domain Lookup Timeout)",
+    "category": "DNS",
+    "severity": "low",
+    "device_type": "Router",
+    "source_device": "Admin Console",
+    "destination_device": "DNS Broadcast (255.255.255.255)",
+    "symptoms": "Whenever engineer mistypes a command in privilege exec mode, console freezes for 30 seconds with \"Translating mistyped_command... domain server (255.255.255.255)\".",
+    "topology_notes": "Lab router R1 has default \"ip domain-lookup\" enabled without a valid DNS server configured.",
+    "show_commands": [
+      {
+        "command": "show running-config | include domain",
+        "output": "ip domain-lookup",
+        "_id": "6a832d6455a03a9e430c19a9"
+      }
+    ],
+    "expected_fault": "Default \"ip domain-lookup\" enabled on router without nameserver.",
+    "expected_osi_layer": "Layer 7 (Application)",
+    "concept_tag": [
+      "DNS",
+      "CLI Usability",
+      "Domain Lookup"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Router interprets mistyped CLI inputs as hostnames and sends broadcast DNS queries to 255.255.255.255, hanging the terminal until timeout occurs.",
+      "confidence": "high",
+      "confidence_score": 98,
+      "osi_layer": "Layer 7 (Application)",
+      "evidence": [
+        "\"ip domain-lookup\" enabled without nameserver"
+      ],
+      "next_command": "show running-config | include name-server",
+      "fix_steps": [
+        "R1(config)# no ip domain-lookup",
+        "R1(config)# end"
+      ],
+      "alternative_causes": [
+        "Console baud rate mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19aa",
+      "generated_at": "2026-08-17T15:48:52.518Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Operational"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Configuration valid"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c19ab",
+      "run_at": "2026-08-17T15:48:52.518Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Lab Admin",
+      "explanation": "Standard Cisco best practice for console management.",
+      "reviewed_at": "2026-08-11T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19ac"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19ad",
+    "title": "Static Route Missing — Branch Cannot Reach HQ Subnet",
+    "category": "Routing",
+    "severity": "critical",
+    "device_type": "Router",
+    "source_device": "Branch PC (10.2.0.10)",
+    "destination_device": "HQ Server (10.1.0.50)",
+    "symptoms": "Branch PC cannot ping HQ server. Branch router R2 has default route to ISP, but HQ LAN 10.1.0.0/24 is not reachable.",
+    "topology_notes": "Branch R2 connects to HQ R1 over point-to-point WAN 203.0.113.0/30. R1 is 203.0.113.1, R2 is 203.0.113.2.",
+    "show_commands": [
+      {
+        "command": "show ip route",
+        "output": "Gateway of last resort is 198.51.100.1 to network 0.0.0.0\n\nS*    0.0.0.0/0 [1/0] via 198.51.100.1\n      203.0.113.0/30 is subnetted, 1 subnets\nC        203.0.113.0 is directly connected, GigabitEthernet0/0\n      10.2.0.0/24 is subnetted, 1 subnets\nC        10.2.0.0 is directly connected, FastEthernet0/0",
+        "_id": "6a832d6455a03a9e430c19ae"
+      }
+    ],
+    "expected_fault": "Missing static route for 10.1.0.0/24 on R2 AND return route on R1.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "Static Route",
+      "Next-Hop"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: Static route for 10.1.0.0/24 is missing on R2. Default route forwards private packets to ISP.",
+      "confidence": "high",
+      "confidence_score": 85,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "No route for 10.1.0.0/24 in show ip route"
+      ],
+      "next_command": "ping 203.0.113.1",
+      "fix_steps": [
+        "Add static route on R2: R2(config)# ip route 10.1.0.0 255.255.255.0 203.0.113.1"
+      ],
+      "alternative_causes": [
+        "Interface down"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19af",
+      "generated_at": "2026-08-17T15:48:52.518Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Default Route",
+          "status": "PASS",
+          "message": "Default route present"
+        },
+        {
+          "rule": "Routing Table",
+          "status": "WARNING",
+          "message": "Destination 10.1.0.0/24 not in table"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Default route exists"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19b0",
+      "run_at": "2026-08-17T15:48:52.518Z"
+    },
+    "human_review": {
+      "decision": "edited",
+      "reviewer": "Lead Network Engineer",
+      "corrected_response": {
+        "root_cause": "Static route for 10.1.0.0/24 is missing on R2, AND return route for 10.2.0.0/24 is missing on HQ router R1. Routing must be bidirectional.",
+        "osi_layer": "Layer 3 (Network)",
+        "fix_steps": [
+          "Add route on Branch: R2(config)# ip route 10.1.0.0 255.255.255.0 203.0.113.1",
+          "Add return route on HQ: R1(config)# ip route 10.2.0.0 255.255.255.0 203.0.113.2",
+          "Verify bidirectional ICMP: ping 10.1.0.50 source 10.2.0.1"
+        ]
+      },
+      "explanation": "AI MISDIAGNOSIS (Responsible AI): AI identified only the forward route on R2 and missed the return route on R1. Both routes are strictly necessary for end-to-end communication.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19b1"
+    },
+    "status": "edited",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.530Z",
+    "updatedAt": "2026-08-17T15:48:52.530Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19b2",
+    "title": "Floating Static Route Administrative Distance Conflict",
+    "category": "Routing",
+    "severity": "medium",
+    "device_type": "Router",
+    "source_device": "Router R1",
+    "destination_device": "Primary ISP vs Backup ISP",
+    "symptoms": "Backup link is taking priority over OSPF primary route. Traffic unnecessarily traversing costly metered cellular backup.",
+    "topology_notes": "Primary link uses OSPF (AD 110). Backup static route was mistakenly configured with Administrative Distance 90 instead of 130.",
+    "show_commands": [
+      {
+        "command": "show ip route 0.0.0.0",
+        "output": "Routing entry for 0.0.0.0/0, supernet\n  Known via \"static\", distance 90, metric 0\n  Routing Descriptor Blocks:\n  * 198.51.100.2, via GigabitEthernet0/2",
+        "_id": "6a832d6455a03a9e430c19b3"
+      }
+    ],
+    "expected_fault": "Floating static route configured with AD 90 (lower than OSPF AD 110).",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "Floating Static Route",
+      "Administrative Distance"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Administrative distance of floating static route is set to 90, which is lower than OSPF (110). The router prefers the static backup link over the primary OSPF link.",
+      "confidence": "high",
+      "confidence_score": 96,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "show ip route shows distance 90 for static default route"
+      ],
+      "next_command": "show ip ospf neighbor",
+      "fix_steps": [
+        "R1(config)# no ip route 0.0.0.0 0.0.0.0 198.51.100.2 90",
+        "R1(config)# ip route 0.0.0.0 0.0.0.0 198.51.100.2 130",
+        "Verify OSPF route enters RIB: show ip route"
+      ],
+      "alternative_causes": [
+        "OSPF neighbor down"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19b4",
+      "generated_at": "2026-08-17T15:48:52.519Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Default Route",
+          "status": "PASS",
+          "message": "Default route active"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Route table parsed"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19b5",
+      "run_at": "2026-08-17T15:48:52.519Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "WAN Specialist",
+      "explanation": "Accurate. Setting AD to 130 ensures static route only activates when OSPF fails.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19b6"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19b7",
+    "title": "Recursive Static Route Next-Hop Unresolvable",
+    "category": "Routing",
+    "severity": "medium",
+    "device_type": "Router",
+    "source_device": "Router R1",
+    "destination_device": "172.16.1.0/24 Subnet",
+    "symptoms": "Configured static route \"ip route 172.16.1.0 255.255.255.0 10.5.5.5\" does not appear in \"show ip route\" table.",
+    "topology_notes": "Next-hop IP 10.5.5.5 is not directly connected and has no route in R1 routing table.",
+    "show_commands": [
+      {
+        "command": "show running-config | include ip route",
+        "output": "ip route 172.16.1.0 255.255.255.0 10.5.5.5",
+        "_id": "6a832d6455a03a9e430c19b8"
+      },
+      {
+        "command": "show ip route 10.5.5.5",
+        "output": "% Subnet not in table",
+        "_id": "6a832d6455a03a9e430c19b9"
+      }
+    ],
+    "expected_fault": "Next-hop 10.5.5.5 cannot be resolved via any interface or route, so route is not installed in RIB.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "Recursive Routing",
+      "RIB"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Static route next-hop 10.5.5.5 is not reachable in the routing table. Cisco IOS will not install a static route into the RIB unless the next-hop IP resolves to an active outgoing interface.",
+      "confidence": "high",
+      "confidence_score": 94,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "show ip route 10.5.5.5 returns \"Subnet not in table\""
+      ],
+      "next_command": "show ip interface brief",
+      "fix_steps": [
+        "Correct the next-hop IP to the directly connected neighbor IP: R1(config)# no ip route 172.16.1.0 255.255.255.0 10.5.5.5",
+        "R1(config)# ip route 172.16.1.0 255.255.255.0 10.1.1.2",
+        "Verify in RIB: show ip route 172.16.1.0"
+      ],
+      "alternative_causes": [
+        "Interface down"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19ba",
+      "generated_at": "2026-08-17T15:48:52.519Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Routing Table",
+          "status": "WARNING",
+          "message": "Next-hop 10.5.5.5 not reachable"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Config parsed"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19bb",
+      "run_at": "2026-08-17T15:48:52.519Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Core Network Engineer",
+      "explanation": "Accurate explanation of Cisco RIB installation rules.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19bc"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19bd",
+    "title": "OSPF Neighbor Adjacency Down — Area ID Mismatch",
+    "category": "Routing",
+    "severity": "critical",
+    "device_type": "Router",
+    "source_device": "R1 (Gi0/0 - Area 0)",
+    "destination_device": "R2 (Gi0/0 - Area 1)",
+    "symptoms": "R1 and R2 fail to form OSPF adjacency on link 10.0.0.0/30. \"show ip ospf neighbor\" returns empty. OSPF hello packets received but discarded.",
+    "topology_notes": "R1 and R2 connected on GigabitEthernet0/0. R1 has network 10.0.0.0 0.0.0.3 area 0. R2 has network 10.0.0.0 0.0.0.3 area 1.",
+    "show_commands": [
+      {
+        "command": "show ip ospf interface Gi0/0",
+        "output": "GigabitEthernet0/0 is up, line protocol is up\n  Internet Address 10.0.0.1/30, Area 0, Attached via Interface Enable\n  Process ID 1, Router ID 1.1.1.1, Network Type BROADCAST, Cost: 1\n  Timer intervals configured, Hello 10, Dead 40, Wait 40, Retransmit 5",
+        "_id": "6a832d6455a03a9e430c19be"
+      },
+      {
+        "command": "show ip ospf neighbor",
+        "output": "-- No neighbors --",
+        "_id": "6a832d6455a03a9e430c19bf"
+      }
+    ],
+    "expected_fault": "OSPF Area ID mismatch (Area 0 on R1 vs Area 1 on R2).",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "OSPF",
+      "Area ID",
+      "Adjacency"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "OSPF Area ID mismatch on link 10.0.0.0/30. R1 is configured in Area 0 while R2 is configured in Area 1. OSPF requires matching Area IDs in Hello packets to establish Full adjacency.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "R1 interface Gi0/0 is in Area 0",
+        "No OSPF neighbor established"
+      ],
+      "next_command": "show running-config | section router ospf on R2",
+      "fix_steps": [
+        "R2(config)# router ospf 1",
+        "R2(config-router)# no network 10.0.0.0 0.0.0.3 area 1",
+        "R2(config-router)# network 10.0.0.0 0.0.0.3 area 0",
+        "Verify adjacency: show ip ospf neighbor"
+      ],
+      "alternative_causes": [
+        "Hello timer mismatch",
+        "MTU mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19c0",
+      "generated_at": "2026-08-17T15:48:52.519Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Gi0/0 is up"
+        },
+        {
+          "rule": "Routing Table",
+          "status": "WARNING",
+          "message": "No OSPF routes learned"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Interface up"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19c1",
+      "run_at": "2026-08-17T15:48:52.519Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Routing Specialist",
+      "explanation": "Verified area mismatch. Correcting R2 to Area 0 brought adjacency to FULL.",
+      "reviewed_at": "2026-08-12T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19c2"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19c3",
+    "title": "OSPF Hello/Dead Timer Mismatch on Point-to-Point Link",
+    "category": "Routing",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "R1 (Hello 10s)",
+    "destination_device": "R2 (Hello 30s)",
+    "symptoms": "OSPF adjacency continuously flaps or never forms between R1 and R2. Debug log: \"OSPF: Dead timer mismatch on Gi0/1\".",
+    "topology_notes": "R1 Gi0/1 has \"ip ospf hello-interval 10\" and dead 40. R2 Gi0/1 was configured with \"ip ospf hello-interval 30\" and dead 120.",
+    "show_commands": [
+      {
+        "command": "show ip ospf interface Gi0/1",
+        "output": "GigabitEthernet0/1 is up, line protocol is up\n  Internet Address 10.0.1.1/30, Area 0\n  Timer intervals configured, Hello 10, Dead 40, Wait 40, Retransmit 5",
+        "_id": "6a832d6455a03a9e430c19c4"
+      }
+    ],
+    "expected_fault": "Hello/Dead timer mismatch (10/40 on R1 vs 30/120 on R2).",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "OSPF",
+      "Hello Timer",
+      "Dead Interval"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "OSPF Hello and Dead intervals do not match on link Gi0/1. OSPF routers reject hello packets unless Hello and Dead timers match identically.",
+      "confidence": "high",
+      "confidence_score": 96,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "Hello interval 10 / Dead 40 on R1",
+        "Syslog indicates timer mismatch"
+      ],
+      "next_command": "show ip ospf interface Gi0/1 on R2",
+      "fix_steps": [
+        "Align timers on R2: R2(config)# interface GigabitEthernet0/1",
+        "R2(config-if)# ip ospf hello-interval 10",
+        "R2(config-if)# ip ospf dead-interval 40",
+        "Verify: show ip ospf neighbor"
+      ],
+      "alternative_causes": [
+        "Authentication mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19c5",
+      "generated_at": "2026-08-17T15:48:52.519Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Gi0/1 is up"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Interface up"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c19c6",
+      "run_at": "2026-08-17T15:48:52.519Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "NOC Engineer",
+      "explanation": "Timer alignment resolved the flapping adjacency immediately.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19c7"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19c8",
+    "title": "OSPF Stuck in EXSTART/EXCHANGE State (MTU Mismatch)",
+    "category": "Routing",
+    "severity": "critical",
+    "device_type": "Router",
+    "source_device": "R1 (MTU 1500)",
+    "destination_device": "R2 (MTU 1400)",
+    "symptoms": "OSPF neighbor state is stuck in EXSTART/EXCHANGE and never reaches FULL. Large database description (DBD) packets are dropped.",
+    "topology_notes": "R1 Gi0/1 has default MTU 1500. R2 Gi0/1 was configured with \"ip mtu 1400\" for a tunnel overlay.",
+    "show_commands": [
+      {
+        "command": "show ip ospf neighbor",
+        "output": "Neighbor ID     Pri   State           Dead Time   Address         Interface\n2.2.2.2           1   EXSTART/ -      00:00:33    10.0.2.2        GigabitEthernet0/1",
+        "_id": "6a832d6455a03a9e430c19c9"
+      },
+      {
+        "command": "show interfaces GigabitEthernet0/1",
+        "output": "GigabitEthernet0/1 is up, line protocol is up\n  Hardware is CN Gigabit Ethernet, address is 0001.9659.8601\n  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec",
+        "_id": "6a832d6455a03a9e430c19ca"
+      }
+    ],
+    "expected_fault": "Interface MTU mismatch (1500 on R1 vs 1400 on R2) causes DBD packets to fail exchange.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "OSPF",
+      "MTU",
+      "EXSTART"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: OSPF Network Type mismatch (Broadcast vs Point-to-Point) causing DR/BDR election conflict.",
+      "confidence": "medium",
+      "confidence_score": 62,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "State stuck in EXSTART",
+        "Neighbor detected at 10.0.2.2"
+      ],
+      "next_command": "ip ospf network point-to-point",
+      "fix_steps": [
+        "Change network type to point-to-point: R1(config-if)# ip ospf network point-to-point"
+      ],
+      "alternative_causes": [
+        "Router ID duplicate"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19cb",
+      "generated_at": "2026-08-17T15:48:52.519Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Gi0/1 is up"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Interface up"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19cc",
+      "run_at": "2026-08-17T15:48:52.519Z"
+    },
+    "human_review": {
+      "decision": "rejected",
+      "reviewer": "Principal Network Engineer",
+      "corrected_response": {
+        "root_cause": "MTU mismatch between R1 (MTU 1500) and R2 (MTU 1400). OSPF DBD packets larger than 1400 bytes are dropped by R2, locking the adjacency in EXSTART/EXCHANGE state.",
+        "osi_layer": "Layer 3 (Network)",
+        "fix_steps": [
+          "Align MTU on R2: R2(config)# interface GigabitEthernet0/1",
+          "R2(config-if)# ip mtu 1500",
+          "Or ignore MTU mismatch: R2(config-if)# ip ospf mtu-ignore",
+          "Verify state reaches FULL: show ip ospf neighbor"
+        ]
+      },
+      "explanation": "AI REJECTION (Responsible AI): AI mistakenly diagnosed OSPF Network Type mismatch. An EXSTART stuck state is the textbook symptom of MTU mismatch during DBD packet exchange.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19cd"
+    },
+    "status": "rejected",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19ce",
+    "title": "OSPF Passive Interface Blocking Adjacency on Core Uplink",
+    "category": "Routing",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "R1 (Passive Gi0/0)",
+    "destination_device": "Core Router (R2)",
+    "symptoms": "R1 fails to form OSPF relationship with Core R2. \"show ip ospf neighbor\" shows no adjacency on Gi0/0.",
+    "topology_notes": "Administrator used \"passive-interface default\" under router ospf 1 and forgot to issue \"no passive-interface Gi0/0\".",
+    "show_commands": [
+      {
+        "command": "show running-config | section router ospf",
+        "output": "router ospf 1\n router-id 1.1.1.1\n passive-interface default\n network 10.0.0.0 0.0.0.3 area 0",
+        "_id": "6a832d6455a03a9e430c19cf"
+      }
+    ],
+    "expected_fault": "Gi0/0 is silenced by \"passive-interface default\" and missing \"no passive-interface Gi0/0\".",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "OSPF",
+      "Passive Interface"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "OSPF is suppressed on Gi0/0 due to \"passive-interface default\". Passive interfaces do not transmit OSPF Hello packets, preventing neighbor formation on the Core link.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "\"passive-interface default\" configured under router ospf 1",
+        "No explicit \"no passive-interface Gi0/0\""
+      ],
+      "next_command": "show ip ospf interface Gi0/0",
+      "fix_steps": [
+        "R1(config)# router ospf 1",
+        "R1(config-router)# no passive-interface GigabitEthernet0/0",
+        "R1(config-router)# end",
+        "Verify neighbor state: show ip ospf neighbor"
+      ],
+      "alternative_causes": [
+        "ACL blocking multicast 224.0.0.5"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19d0",
+      "generated_at": "2026-08-17T15:48:52.520Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Routing Table",
+          "status": "PASS",
+          "message": "OSPF process active"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Config valid"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c19d1",
+      "run_at": "2026-08-17T15:48:52.520Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Enterprise Architect",
+      "explanation": "Accurate. Re-enabling OSPF hellos on Gi0/0 formed adjacency immediately.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19d2"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19d3",
+    "title": "eBGP Multihop Missing on Loopback Peering Session",
+    "category": "Routing",
+    "severity": "critical",
+    "device_type": "Router",
+    "source_device": "R1 (AS 65001)",
+    "destination_device": "R2 (AS 65002)",
+    "symptoms": "eBGP session between R1 and R2 remains in \"Idle\" or \"Active\" state. TCP connection for BGP port 179 fails to establish.",
+    "topology_notes": "R1 and R2 peer using loopback addresses (1.1.1.1 and 2.2.2.2). Default eBGP TTL is 1.",
+    "show_commands": [
+      {
+        "command": "show ip bgp summary",
+        "output": "BGP router identifier 1.1.1.1, local AS number 65001\nNeighbor        V           AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd\n2.2.2.2         4        65002       0       0        1    0    0 00:15:22 Idle",
+        "_id": "6a832d6455a03a9e430c19d4"
+      },
+      {
+        "command": "show running-config | section router bgp",
+        "output": "router bgp 65001\n neighbor 2.2.2.2 remote-as 65002\n neighbor 2.2.2.2 update-source Loopback0",
+        "_id": "6a832d6455a03a9e430c19d5"
+      }
+    ],
+    "expected_fault": "eBGP requires \"neighbor 2.2.2.2 ebgp-multihop 2\" when peering across loopbacks.",
+    "expected_osi_layer": "Layer 3 / Layer 4",
+    "concept_tag": [
+      "Routing",
+      "BGP",
+      "eBGP",
+      "Multihop"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "eBGP peering is configured to loopback IP 2.2.2.2 without \"ebgp-multihop\". By default, eBGP packets have TTL=1 and are dropped by the receiving router when routed to a loopback interface.",
+      "confidence": "high",
+      "confidence_score": 94,
+      "osi_layer": "Layer 4 (Transport)",
+      "evidence": [
+        "show ip bgp summary shows 2.2.2.2 in Idle state",
+        "neighbor update-source Loopback0 without ebgp-multihop"
+      ],
+      "next_command": "ping 2.2.2.2 source loopback 0",
+      "fix_steps": [
+        "R1(config)# router bgp 65001",
+        "R1(config-router)# neighbor 2.2.2.2 ebgp-multihop 2",
+        "R2(config)# router bgp 65002",
+        "R2(config-router)# neighbor 1.1.1.1 ebgp-multihop 2",
+        "Verify: show ip bgp summary"
+      ],
+      "alternative_causes": [
+        "TCP 179 blocked on firewall",
+        "BGP AS number mismatch"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19d6",
+      "generated_at": "2026-08-17T15:48:52.520Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Routing Table",
+          "status": "WARNING",
+          "message": "BGP neighbor in Idle state"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "BGP process configured"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19d7",
+      "run_at": "2026-08-17T15:48:52.520Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "ISP Backbone Engineer",
+      "explanation": "Accurate. Setting ebgp-multihop 2 allowed BGP SYN packets to establish TCP session.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19d8"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19d9",
+    "title": "BGP Route Not Advertised — Network Mask Mismatch",
+    "category": "Routing",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "Edge Router R1",
+    "destination_device": "Upstream Provider (AS 100)",
+    "symptoms": "Enterprise LAN subnet 10.10.0.0/24 is not being advertised to BGP neighbor. \"show ip bgp\" on R1 is empty for that prefix.",
+    "topology_notes": "RIB has 10.10.0.0/24 directly connected. BGP config has \"network 10.10.0.0 mask 255.0.0.0\" (/8).",
+    "show_commands": [
+      {
+        "command": "show ip route 10.10.0.0",
+        "output": "Routing entry for 10.10.0.0/24\n  Known via \"connected\", distance 0, metric 0 (connected)\n  * directly connected, via GigabitEthernet0/2",
+        "_id": "6a832d6455a03a9e430c19da"
+      },
+      {
+        "command": "show running-config | section router bgp",
+        "output": "router bgp 65001\n network 10.10.0.0 mask 255.0.0.0\n neighbor 198.51.100.1 remote-as 100",
+        "_id": "6a832d6455a03a9e430c19db"
+      }
+    ],
+    "expected_fault": "BGP network command mask (255.0.0.0) does not match exact RIB prefix (255.255.255.0).",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "BGP",
+      "Network Statement",
+      "Prefix Mask"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: BGP neighbor session needs a soft reset (clear ip bgp * soft) to trigger outbound route refresh.",
+      "confidence": "medium",
+      "confidence_score": 58,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "Prefix missing in BGP table",
+        "Neighbor session is Established"
+      ],
+      "next_command": "clear ip bgp * soft",
+      "fix_steps": [
+        "R1# clear ip bgp * soft out",
+        "Verify: show ip bgp"
+      ],
+      "alternative_causes": [
+        "Route-map outbound filter"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19dc",
+      "generated_at": "2026-08-17T15:48:52.520Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Routing Table",
+          "status": "PASS",
+          "message": "RIB contains 10.10.0.0/24"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "RIB entry exists"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19dd",
+      "run_at": "2026-08-17T15:48:52.520Z"
+    },
+    "human_review": {
+      "decision": "edited",
+      "reviewer": "Senior Routing Architect",
+      "corrected_response": {
+        "root_cause": "BGP network statement specifies classful /8 mask (255.0.0.0), but the routing table (RIB) contains an exact /24 (255.255.255.0). BGP strictly requires an exact match of prefix AND mask in the RIB to originate a route.",
+        "osi_layer": "Layer 3 (Network)",
+        "fix_steps": [
+          "R1(config)# router bgp 65001",
+          "R1(config-router)# no network 10.10.0.0 mask 255.0.0.0",
+          "R1(config-router)# network 10.10.0.0 mask 255.255.255.0",
+          "Verify prefix origin: show ip bgp 10.10.0.0/24"
+        ]
+      },
+      "explanation": "AI MISDIAGNOSIS (Responsible AI): AI recommended clearing BGP sessions. The fundamental issue is that BGP will never originate a route if the network statement mask does not match the RIB entry.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19de"
+    },
+    "status": "edited",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19df",
+    "title": "iBGP Learned Route Inaccessible (Next-Hop Unreachable)",
+    "category": "Routing",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "Internal Router R3",
+    "destination_device": "Edge Router R1",
+    "symptoms": "R3 learns external prefix 203.0.113.0/24 via iBGP from R1, but the route is not installed in R3 routing table. Route status is \"valid\" but not \"best\".",
+    "topology_notes": "R1 learns prefix from eBGP with next-hop 198.51.100.1 and advertises to iBGP peer R3 without modifying the next-hop.",
+    "show_commands": [
+      {
+        "command": "show ip bgp 203.0.113.0/24",
+        "output": "BGP routing table entry for 203.0.113.0/24, version 5\nPaths: (1 available, no best path)\n  Not advertised to any peer\n  100\n    198.51.100.1 (inaccessible) from 1.1.1.1 (1.1.1.1)\n      Origin IGP, metric 0, localpref 100, valid, internal",
+        "_id": "6a832d6455a03a9e430c19e0"
+      }
+    ],
+    "expected_fault": "iBGP speaker R1 does not modify next-hop to itself, leaving next-hop 198.51.100.1 inaccessible to internal router R3.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "Routing",
+      "BGP",
+      "iBGP",
+      "Next-Hop-Self"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "iBGP does not change the next-hop attribute by default. R3 cannot reach external next-hop 198.51.100.1, causing the route to be marked (inaccessible) and rejected from the routing table.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "show ip bgp shows \"198.51.100.1 (inaccessible)\"",
+        "no best path selected"
+      ],
+      "next_command": "show ip route 198.51.100.1",
+      "fix_steps": [
+        "On Edge Router R1: R1(config)# router bgp 65001",
+        "R1(config-router)# neighbor 3.3.3.3 next-hop-self",
+        "Verify on R3: show ip bgp 203.0.113.0/24 (should show best path)"
+      ],
+      "alternative_causes": [
+        "Missing IGP route for eBGP subnet"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19e1",
+      "generated_at": "2026-08-17T15:48:52.520Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Routing Table",
+          "status": "PASS",
+          "message": "BGP path parsed"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "BGP data parsed"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19e2",
+      "run_at": "2026-08-17T15:48:52.520Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "BGP Engineer",
+      "explanation": "Accurate diagnosis. Applying next-hop-self on R1 resolved the iBGP reachability issue.",
+      "reviewed_at": "2026-08-16T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19e3"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19e4",
+    "title": "ACL Blocking SSH Access to Router Management Interface",
+    "category": "ACL",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "Admin PC (192.168.1.50)",
+    "destination_device": "Router R1 (192.168.1.1)",
+    "symptoms": "Admin PC can ping Router R1 (192.168.1.1) but cannot establish SSH connection (port 22 connection refused/timed out).",
+    "topology_notes": "Router R1 has access-class 10 applied on line vty 0 4. Standard ACL 10 permits 10.0.0.0/8 only.",
+    "show_commands": [
+      {
+        "command": "show access-lists 10",
+        "output": "Standard IP access list 10\n    10 permit 10.0.0.0, wildcard bits 0.255.255.255\n    20 deny any (45 matches)",
+        "_id": "6a832d6455a03a9e430c19e5"
+      },
+      {
+        "command": "show running-config | section line vty",
+        "output": "line vty 0 4\n access-class 10 in\n transport input ssh\n login local",
+        "_id": "6a832d6455a03a9e430c19e6"
+      }
+    ],
+    "expected_fault": "Standard ACL 10 on line vty does not permit admin subnet 192.168.1.0/24.",
+    "expected_osi_layer": "Layer 4 / Layer 7",
+    "concept_tag": [
+      "ACL",
+      "SSH",
+      "VTY Line",
+      "Access-Class"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Access Control List 10 applied to line vty 0 4 restricts management access to 10.0.0.0/8 only. Incoming SSH from 192.168.1.50 hits the implicit deny statement.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 4 (Transport)",
+      "evidence": [
+        "show access-lists 10 shows 45 deny matches",
+        "line vty has access-class 10 in"
+      ],
+      "next_command": "show running-config | section access-list 10",
+      "fix_steps": [
+        "R1(config)# ip access-list standard 10",
+        "R1(config-std-nacl)# 15 permit 192.168.1.0 0.0.0.255",
+        "Verify SSH from PC: ssh admin@192.168.1.1"
+      ],
+      "alternative_causes": [
+        "crypto key zeroize executed",
+        "transport input telnet only"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19e7",
+      "generated_at": "2026-08-17T15:48:52.520Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "ACL Deny Check",
+          "status": "FAIL",
+          "message": "ACL contains deny statement with active matches"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "VTY config present"
+      ],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c19e8",
+      "run_at": "2026-08-17T15:48:52.521Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Security Admin",
+      "explanation": "Accurate. Added permit rule for management subnet 192.168.1.0/24.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19e9"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19ea",
+    "title": "Inter-VLAN ACL Blocking HTTP Port 80 Traffic",
+    "category": "ACL",
+    "severity": "medium",
+    "device_type": "Router",
+    "source_device": "Client PC (VLAN 10)",
+    "destination_device": "Web Server (VLAN 30)",
+    "symptoms": "Clients can ping web server at 192.168.30.10, but web browser displays \"Connection Timed Out\" when loading http://192.168.30.10.",
+    "topology_notes": "Extended ACL 101 applied inbound on subinterface Gi0/0.10 permits ICMP and TCP port 8080, but web server listens on port 80.",
+    "show_commands": [
+      {
+        "command": "show access-lists 101",
+        "output": "Extended IP access list 101\n    10 permit icmp 192.168.10.0 0.0.0.255 192.168.30.0 0.0.0.255 (24 matches)\n    20 permit tcp 192.168.10.0 0.0.0.255 192.168.30.0 0.0.0.255 eq 8080\n    30 deny ip any any (118 matches)",
+        "_id": "6a832d6455a03a9e430c19eb"
+      }
+    ],
+    "expected_fault": "ACL 101 permits port 8080 instead of standard HTTP port 80 (or www).",
+    "expected_osi_layer": "Layer 4 (Transport)",
+    "concept_tag": [
+      "ACL",
+      "Extended ACL",
+      "TCP Port",
+      "HTTP"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Extended ACL 101 rule 20 specifies destination TCP port 8080 instead of port 80 (HTTP). HTTP web requests hit the deny ip any any rule.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 4 (Transport)",
+      "evidence": [
+        "Ping works (rule 10 permit icmp has 24 matches)",
+        "ACL permits eq 8080, but web traffic is on port 80"
+      ],
+      "next_command": "show running-config interface Gi0/0.10",
+      "fix_steps": [
+        "R1(config)# ip access-list extended 101",
+        "R1(config-ext-nacl)# 25 permit tcp 192.168.10.0 0.0.0.255 192.168.30.0 0.0.0.255 eq 80",
+        "Verify: open http://192.168.30.10 from client PC"
+      ],
+      "alternative_causes": [
+        "Web service not running on server"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19ec",
+      "generated_at": "2026-08-17T15:48:52.521Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "ACL Deny Check",
+          "status": "FAIL",
+          "message": "ACL denies non-8080 TCP traffic"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "ICMP permitted"
+      ],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c19ed",
+      "run_at": "2026-08-17T15:48:52.521Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Firewall Admin",
+      "explanation": "Accurate. Added permit rule for standard HTTP port 80.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19ee"
+    },
+    "status": "fixed",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19ef",
+    "title": "Standard ACL Placed Near Source Blocking All Outbound Traffic",
+    "category": "ACL",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "Sales Host (192.168.10.5)",
+    "destination_device": "Internet & Corporate LAN",
+    "symptoms": "Sales PC 192.168.10.5 was intended to be blocked from accessing Server 192.168.30.50 only, but now cannot reach the Internet or any other subnet.",
+    "topology_notes": "Admin configured standard ACL 1 \"access-list 1 deny 192.168.10.5\" and applied it inbound on Gi0/0 (Sales LAN gateway).",
+    "show_commands": [
+      {
+        "command": "show access-lists 1",
+        "output": "Standard IP access list 1\n    10 deny 192.168.10.5\n    20 permit any (340 matches)",
+        "_id": "6a832d6455a03a9e430c19f0"
+      },
+      {
+        "command": "show running-config interface Gi0/0",
+        "output": "interface GigabitEthernet0/0\n ip address 192.168.10.1 255.255.255.0\n ip access-group 1 in",
+        "_id": "6a832d6455a03a9e430c19f1"
+      }
+    ],
+    "expected_fault": "Standard ACL filters on source IP only and was placed near source, dropping all traffic from 192.168.10.5.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "ACL",
+      "Standard ACL",
+      "ACL Placement",
+      "Extended ACL"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: ACL 1 rule order is incorrect or needs a permit statement added.",
+      "confidence": "medium",
+      "confidence_score": 60,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "ACL 1 denies 192.168.10.5",
+        "Host cannot reach any destination"
+      ],
+      "next_command": "show access-lists",
+      "fix_steps": [
+        "Add permit rule on top: access-list 1 permit any"
+      ],
+      "alternative_causes": [
+        "NAT failure"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19f2",
+      "generated_at": "2026-08-17T15:48:52.521Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "ACL Deny Check",
+          "status": "FAIL",
+          "message": "Standard ACL applied at source blocks all traffic"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c19f3",
+      "run_at": "2026-08-17T15:48:52.521Z"
+    },
+    "human_review": {
+      "decision": "edited",
+      "reviewer": "Senior Security Architect",
+      "corrected_response": {
+        "root_cause": "Standard ACLs evaluate SOURCE address only. Applying Standard ACL 1 on the source gateway interface Gi0/0 filters ALL outbound traffic from 192.168.10.5. Filtering a specific destination requires an Extended ACL placed near the source.",
+        "osi_layer": "Layer 3 (Network)",
+        "fix_steps": [
+          "Remove Standard ACL from Gi0/0: R1(config-if)# no ip access-group 1 in",
+          "Create Extended ACL: R1(config)# ip access-list extended 105",
+          "R1(config-ext-nacl)# deny ip host 192.168.10.5 host 192.168.30.50",
+          "R1(config-ext-nacl)# permit ip any any",
+          "Apply Extended ACL on Gi0/0: R1(config)# interface Gi0/0",
+          "R1(config-if)# ip access-group 105 in"
+        ]
+      },
+      "explanation": "AI MISDIAGNOSIS (Responsible AI): AI suggested \"permit any\" in the standard ACL which would unblock everything. Cisco rule: Standard ACLs must be placed near destination; to filter source-to-destination traffic at the source interface, an Extended ACL is required.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19f4"
+    },
+    "status": "edited",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19f5",
+    "title": "NAT Overload Missing \"overload\" Keyword on Source List",
+    "category": "NAT",
+    "severity": "critical",
+    "device_type": "Router",
+    "source_device": "LAN Hosts (192.168.1.0/24)",
+    "destination_device": "Internet (Public Web)",
+    "symptoms": "The first user to browse the web succeeds, but all subsequent users fail to connect to external sites.",
+    "topology_notes": "Router R1 provides NAT between LAN Gi0/1 and WAN Gi0/0 (Public IP 203.0.113.1).",
+    "show_commands": [
+      {
+        "command": "show running-config | include ip nat",
+        "output": "ip nat inside source list 1 interface GigabitEthernet0/0\ninterface GigabitEthernet0/0\n ip nat outside\ninterface GigabitEthernet0/1\n ip nat inside",
+        "_id": "6a832d6455a03a9e430c19f6"
+      },
+      {
+        "command": "show ip nat translations",
+        "output": "Pro Inside global      Inside local       Outside local      Outside global\n--- 203.0.113.1        192.168.1.10       ---                ---",
+        "_id": "6a832d6455a03a9e430c19f7"
+      }
+    ],
+    "expected_fault": "Static 1-to-1 dynamic NAT configured instead of PAT because \"overload\" keyword is omitted.",
+    "expected_osi_layer": "Layer 3 / Layer 4",
+    "concept_tag": [
+      "NAT",
+      "PAT",
+      "NAT Overload",
+      "Port Address Translation"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "The NAT translation statement \"ip nat inside source list 1 interface Gi0/0\" is missing the \"overload\" keyword. Without overload, Cisco IOS performs 1-to-1 static NAT, locking the single public IP to the first host that transmits.",
+      "confidence": "high",
+      "confidence_score": 96,
+      "osi_layer": "Layer 4 (Transport)",
+      "evidence": [
+        "show running-config lacks \"overload\"",
+        "show ip nat translations shows single 1-to-1 binding"
+      ],
+      "next_command": "clear ip nat translation *",
+      "fix_steps": [
+        "R1(config)# no ip nat inside source list 1 interface GigabitEthernet0/0",
+        "R1(config)# ip nat inside source list 1 interface GigabitEthernet0/0 overload",
+        "R1# clear ip nat translation *",
+        "Verify multiple translations: show ip nat translations"
+      ],
+      "alternative_causes": [
+        "ACL 1 missing permit"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19f8",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "NAT Translation Table",
+          "status": "PASS",
+          "message": "NAT table parsed"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Interface inside/outside configured"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c19f9",
+      "run_at": "2026-08-17T15:48:52.522Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Internet Gateway Admin",
+      "explanation": "Accurate. Adding \"overload\" enabled PAT for all concurrent LAN sessions.",
+      "reviewed_at": "2026-08-12T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19fa"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c19fb",
+    "title": "Missing \"ip nat inside\" Directive on Inside Interface",
+    "category": "NAT",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "LAN Host (192.168.2.15)",
+    "destination_device": "Internet",
+    "symptoms": "LAN users cannot access internet. \"show ip nat statistics\" shows 0 translations and 0 packets translated.",
+    "topology_notes": "New subinterface Gi0/1.20 was added for guest WiFi, but \"ip nat inside\" was omitted.",
+    "show_commands": [
+      {
+        "command": "show ip nat statistics",
+        "output": "Total active translations: 0 (0 static, 0 dynamic, 0 extended)\nOutside interfaces:\n  GigabitEthernet0/0\nInside interfaces:\n  GigabitEthernet0/1.10\nHits: 0  Misses: 0",
+        "_id": "6a832d6455a03a9e430c19fc"
+      }
+    ],
+    "expected_fault": "Subinterface Gi0/1.20 is not configured with \"ip nat inside\".",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "NAT",
+      "Inside Interface",
+      "NAT Statistics"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Interface Gi0/1.20 is missing \"ip nat inside\". Packets entering the router from VLAN 20 are routed toward the WAN without being translated, causing the ISP to drop unroutable private RFC 1918 addresses.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "show ip nat statistics lists only Gi0/1.10 as inside interface"
+      ],
+      "next_command": "show running-config interface Gi0/1.20",
+      "fix_steps": [
+        "R1(config)# interface GigabitEthernet0/1.20",
+        "R1(config-subif)# ip nat inside",
+        "R1(config-subif)# end",
+        "Verify: show ip nat statistics"
+      ],
+      "alternative_causes": [
+        "ACL not matching VLAN 20 subnet"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c19fd",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "NAT Translation Table",
+          "status": "PASS",
+          "message": "NAT process operational"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Outside interface defined"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c19fe",
+      "run_at": "2026-08-17T15:48:52.522Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Field Engineer",
+      "explanation": "Accurate. Added ip nat inside to Gi0/1.20.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c19ff"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a00",
+    "title": "NAT Access-List Mismatch — New Subnet Excluded from NAT ACL",
+    "category": "NAT",
+    "severity": "high",
+    "device_type": "Router",
+    "source_device": "New Subnet (192.168.30.0/24)",
+    "destination_device": "Internet",
+    "symptoms": "VLAN 10 users browse web without issue. New VLAN 30 users cannot reach any external website.",
+    "topology_notes": "NAT ACL 1 specifies \"permit 192.168.10.0 0.0.0.255\" only. Subnet 192.168.30.0/24 is omitted.",
+    "show_commands": [
+      {
+        "command": "show access-lists 1",
+        "output": "Standard IP access list 1\n    10 permit 192.168.10.0, wildcard bits 0.0.0.255 (1520 matches)",
+        "_id": "6a832d6455a03a9e430c1a01"
+      },
+      {
+        "command": "show running-config | include ip nat inside source",
+        "output": "ip nat inside source list 1 interface GigabitEthernet0/0 overload",
+        "_id": "6a832d6455a03a9e430c1a02"
+      }
+    ],
+    "expected_fault": "ACL 1 only permits 192.168.10.0/24; VLAN 30 (192.168.30.0/24) is denied by implicit deny.",
+    "expected_osi_layer": "Layer 3 (Network)",
+    "concept_tag": [
+      "NAT",
+      "ACL",
+      "NAT Access List"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Standard ACL 1 referenced by the NAT statement only matches 192.168.10.0/24. Packets from 192.168.30.0/24 are ignored by the NAT process and forwarded with private source IPs or dropped.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 3 (Network)",
+      "evidence": [
+        "ACL 1 has only one permit line for 192.168.10.0/24",
+        "NAT uses list 1"
+      ],
+      "next_command": "show ip nat statistics",
+      "fix_steps": [
+        "R1(config)# access-list 1 permit 192.168.30.0 0.0.0.255",
+        "Verify translation: ping 8.8.8.8 from VLAN 30 PC"
+      ],
+      "alternative_causes": [
+        "Missing default route"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a03",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "NAT Translation Table",
+          "status": "PASS",
+          "message": "NAT configuration parsed"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "NAT overload active"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c1a04",
+      "run_at": "2026-08-17T15:48:52.522Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Senior NetOps",
+      "explanation": "Added permit statement for 192.168.30.0/24 to ACL 1.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a05"
+    },
+    "status": "fixed",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a06",
+    "title": "Wireless Client Cannot Obtain IP via DHCP (AP Port in Default VLAN)",
+    "category": "Wireless",
+    "severity": "medium",
+    "device_type": "Access Point + Switch",
+    "source_device": "Wireless Tablet",
+    "destination_device": "DHCP Server (192.168.40.1)",
+    "symptoms": "Wireless clients associate with SSID \"CorpWiFi\" but receive APIPA 169.254.x.x address and cannot access local resources.",
+    "topology_notes": "Access Point is connected to switch SW1 port Fa0/10. AP broadcasts multiple SSIDs (CorpWiFi mapping to VLAN 40, GuestWiFi mapping to VLAN 50). SW1 port Fa0/10 was configured as access VLAN 1.",
+    "show_commands": [
+      {
+        "command": "show vlan brief",
+        "output": "VLAN Name                             Status    Ports\n---- -------------------------------- --------- -------------------------------\n1    default                          active    Fa0/10, Fa0/11\n40   CORP_WIFI                        active    \n50   GUEST_WIFI                       active    ",
+        "_id": "6a832d6455a03a9e430c1a07"
+      },
+      {
+        "command": "show interfaces Fa0/10 switchport",
+        "output": "Name: Fa0/10\nAdministrative Mode: static access\nOperational Mode: static access\nAccess Mode VLAN: 1 (default)",
+        "_id": "6a832d6455a03a9e430c1a08"
+      }
+    ],
+    "expected_fault": "Switchport Fa0/10 connecting multi-SSID AP is configured as access VLAN 1 instead of 802.1Q trunk.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "Wireless",
+      "Access Point",
+      "Trunking",
+      "SSID-to-VLAN"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "AI Initial Diagnosis: Switchport Fa0/10 is in access mode VLAN 1 and should be changed to access VLAN 40.",
+      "confidence": "medium",
+      "confidence_score": 68,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "Fa0/10 is in VLAN 1",
+        "Clients mapping to VLAN 40 fail DHCP"
+      ],
+      "next_command": "show running-config interface Fa0/10",
+      "fix_steps": [
+        "SW1(config-if)# switchport access vlan 40"
+      ],
+      "alternative_causes": [
+        "DHCP pool missing"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a09",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "VLAN 40 Presence",
+          "status": "PASS",
+          "message": "VLAN 40 exists"
+        },
+        {
+          "rule": "Trunk Configuration",
+          "status": "WARNING",
+          "message": "AP port not configured as trunk"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "VLANs exist"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1a0a",
+      "run_at": "2026-08-17T15:48:52.522Z"
+    },
+    "human_review": {
+      "decision": "edited",
+      "reviewer": "Wireless Network Architect",
+      "corrected_response": {
+        "root_cause": "The Access Point broadcasts multiple SSIDs (CorpWiFi on VLAN 40 and GuestWiFi on VLAN 50). The switchport Fa0/10 must be configured as an 802.1Q TRUNK port carrying VLANs 40 and 50 (with native VLAN for AP management), rather than a single access port.",
+        "osi_layer": "Layer 2 (Data Link)",
+        "fix_steps": [
+          "SW1(config)# interface FastEthernet0/10",
+          "SW1(config-if)# switchport mode trunk",
+          "SW1(config-if)# switchport trunk allowed vlan 40,50,99",
+          "SW1(config-if)# switchport trunk native vlan 99",
+          "Verify: show interfaces Fa0/10 trunk"
+        ]
+      },
+      "explanation": "AI MISDIAGNOSIS (Responsible AI): AI recommended setting Fa0/10 to access VLAN 40. However, because the AP serves multiple SSIDs (Corp and Guest), it requires an 802.1Q trunk port.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a0b"
+    },
+    "status": "edited",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a0c",
+    "title": "WPA2-PSK Authentication Failure on Employee SSID",
+    "category": "Wireless",
+    "severity": "medium",
+    "device_type": "WLC + AP",
+    "source_device": "Mobile Phone",
+    "destination_device": "Wireless LAN Controller",
+    "symptoms": "Mobile devices fail to connect to \"CorpSecure\" with \"Authentication error\" or \"Incorrect password\".",
+    "topology_notes": "WLC configured with WPA2-PSK AES. Pre-shared key updated on WLC yesterday, but group policy on clients has stale key.",
+    "show_commands": [
+      {
+        "command": "show wlan summary",
+        "output": "WLAN ID  WLAN Profile Name   SSID          Status  Security\n1        CorpSecure          CorpSecure    Enabled [WPA2][Auth(PSK)][AES]",
+        "_id": "6a832d6455a03a9e430c1a0d"
+      }
+    ],
+    "expected_fault": "WPA2 pre-shared key mismatch between client profile and WLC.",
+    "expected_osi_layer": "Layer 2 (Security)",
+    "concept_tag": [
+      "Wireless",
+      "WPA2-PSK",
+      "WLC",
+      "Security"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "WPA2 pre-shared key mismatch between wireless client credentials and WLC WLAN 1 profile.",
+      "confidence": "high",
+      "confidence_score": 90,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "WLAN profile 1 configured with WPA2 PSK AES",
+        "Clients reporting auth error"
+      ],
+      "next_command": "show wlan 1 detail",
+      "fix_steps": [
+        "Update client Wi-Fi password to match current WLC PSK",
+        "Or verify PSK on WLC: config wlan security wpa akm psk set-key ascii <key> 1"
+      ],
+      "alternative_causes": [
+        "SSID disabled on radio"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a0e",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "WLAN active"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "WLAN profile enabled"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c1a0f",
+      "run_at": "2026-08-17T15:48:52.522Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Wireless Admin",
+      "explanation": "Updated MDM WiFi profile password. Devices authenticated successfully.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a10"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a11",
+    "title": "Lightweight AP CAPWAP Discovery Failure (Missing DHCP Option 43)",
+    "category": "Wireless",
+    "severity": "high",
+    "device_type": "Lightweight AP",
+    "source_device": "LAP-101",
+    "destination_device": "WLC (10.10.10.5)",
+    "symptoms": "Lightweight AP powers on, receives an IP address on management VLAN 100, but fails to join WLC. AP console logs: \"Translating CISCO-CAPWAP-CONTROLLER... Failed to find WLC\".",
+    "topology_notes": "AP is on subnet 192.168.100.0/24. WLC is on 10.10.10.5. DHCP pool for VLAN 100 is missing Option 43 (or DNS entry CISCO-CAPWAP-CONTROLLER).",
+    "show_commands": [
+      {
+        "command": "show running-config | section dhcp",
+        "output": "ip dhcp pool AP_MGMT\n network 192.168.100.0 255.255.255.0\n default-router 192.168.100.1\n dns-server 10.10.10.2",
+        "_id": "6a832d6455a03a9e430c1a12"
+      }
+    ],
+    "expected_fault": "DHCP pool is missing Option 43 hex string specifying WLC management IP 10.10.10.5.",
+    "expected_osi_layer": "Layer 7 (Application)",
+    "concept_tag": [
+      "Wireless",
+      "CAPWAP",
+      "Option 43",
+      "Lightweight AP"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Lightweight AP cannot discover the WLC across subnets because DHCP pool AP_MGMT lacks Option 43 (vendor-specific option pointing to WLC IP 10.10.10.5).",
+      "confidence": "high",
+      "confidence_score": 94,
+      "osi_layer": "Layer 7 (Application)",
+      "evidence": [
+        "DHCP pool AP_MGMT has no option 43",
+        "AP console logs CAPWAP discovery timeout"
+      ],
+      "next_command": "ping 10.10.10.5 from router",
+      "fix_steps": [
+        "R1(config)# ip dhcp pool AP_MGMT",
+        "R1(dhcp-config)# option 43 hex f1040a0a0a05 (f1: type, 04: length 4 bytes, 0a0a0a05: 10.10.10.5)",
+        "Reboot AP to trigger CAPWAP join"
+      ],
+      "alternative_causes": [
+        "WLC software version incompatible"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a13",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "DHCP Relay",
+          "status": "PASS",
+          "message": "DHCP pool active"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "DHCP pool valid"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1a14",
+      "run_at": "2026-08-17T15:48:52.522Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Mobility Engineer",
+      "explanation": "Configuring Option 43 in DHCP allowed LAP-101 to register with WLC.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a15"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a16",
+    "title": "STP Root Bridge Contention — Access Switch Winning Root Election",
+    "category": "Other",
+    "severity": "high",
+    "device_type": "Switch",
+    "source_device": "SW-Core",
+    "destination_device": "SW-Access3",
+    "symptoms": "Sub-optimal Layer 2 traffic paths across campus. All traffic hairpins through an access switch in the wiring closet. High CPU on access switch.",
+    "topology_notes": "Core switch SW-Core has default STP priority 32768 (MAC 0001.c789.1111). Access switch SW-Access3 has default priority 32768 (MAC 0000.0c12.3456 - lower MAC won election).",
+    "show_commands": [
+      {
+        "command": "show spanning-tree root",
+        "output": "                                        Root    Hello Max Fwd\nVlan                   Root ID          Cost    Time  Age Dly  Root Port\n---------------- -------------------- --------- ----- --- ---  ------------\nVLAN0001         32769 0000.0c12.3456         4    2   20  15  Gi0/2",
+        "_id": "6a832d6455a03a9e430c1a17"
+      }
+    ],
+    "expected_fault": "STP priority was left at default (32768) on all switches, causing oldest access switch to win root bridge.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "STP",
+      "Root Bridge",
+      "Spanning Tree",
+      "Layer 2 Design"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "All switches have default Spanning Tree priority (32768). Access switch SW-Access3 won the Root Bridge election due to having the lowest numerical MAC address, creating inefficient spanning-tree topology.",
+      "confidence": "high",
+      "confidence_score": 96,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "show spanning-tree root shows Root ID priority 32769 at 0000.0c12.3456 (Access switch)"
+      ],
+      "next_command": "show spanning-tree summary",
+      "fix_steps": [
+        "Set Core as Primary Root: SW-Core(config)# spanning-tree vlan 1-4094 priority 4096",
+        "Set Distribution as Secondary: SW-Dist(config)# spanning-tree vlan 1-4094 priority 8192",
+        "Verify root location: show spanning-tree root"
+      ],
+      "alternative_causes": [
+        "BPDU filter enabled on core"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a18",
+      "generated_at": "2026-08-17T15:48:52.522Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Trunk Status",
+          "status": "PASS",
+          "message": "Spanning-tree forwarding active"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "STP active"
+      ],
+      "overall_status": "warning",
+      "_id": "6a832d6455a03a9e430c1a19",
+      "run_at": "2026-08-17T15:48:52.523Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Campus Network Lead",
+      "explanation": "Accurate. Setting priority 4096 on Core switch established deterministic STP topology.",
+      "reviewed_at": "2026-08-13T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a1a"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a1b",
+    "title": "BPDU Guard Err-Disabled Port on Access Switch",
+    "category": "Other",
+    "severity": "medium",
+    "device_type": "Switch",
+    "source_device": "Switch Port Fa0/8",
+    "destination_device": "Rogue Mini-Switch",
+    "symptoms": "Port Fa0/8 went down suddenly. LED is amber. Port status shows \"err-disabled\". Console log: %SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port Fa0/8 with BPDU Guard enabled.",
+    "topology_notes": "User plugged an unmanaged 5-port desktop switch into wall jack Fa0/8. Port has PortFast and BPDU Guard enabled.",
+    "show_commands": [
+      {
+        "command": "show interfaces status err-disabled",
+        "output": "Port      Name               Status       Reason               Err-disable Vlans\nFa0/8     Office-102         err-disabled bpduguard",
+        "_id": "6a832d6455a03a9e430c1a1c"
+      },
+      {
+        "command": "show running-config interface Fa0/8",
+        "output": "interface FastEthernet0/8\n switchport access vlan 10\n switchport mode access\n spanning-tree portfast\n spanning-tree bpduguard enable",
+        "_id": "6a832d6455a03a9e430c1a1d"
+      }
+    ],
+    "expected_fault": "BPDU Guard disabled the port upon detecting BPDUs from unauthorized rogue switch.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "STP",
+      "BPDU Guard",
+      "PortFast",
+      "Err-Disabled"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "BPDU Guard shut down interface Fa0/8 (err-disabled) because it received Spanning Tree Bridge Protocol Data Units (BPDUs) on a PortFast-enabled access port, preventing unauthorized switches from altering topology.",
+      "confidence": "high",
+      "confidence_score": 98,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "show interfaces status err-disabled confirms bpduguard reason",
+        "Fa0/8 has spanning-tree bpduguard enable"
+      ],
+      "next_command": "show interfaces Fa0/8 status",
+      "fix_steps": [
+        "Disconnect unauthorized switch from wall jack Fa0/8",
+        "Reset interface: SW1(config)# interface FastEthernet0/8",
+        "SW1(config-if)# shutdown",
+        "SW1(config-if)# no shutdown",
+        "Optional: configure \"errdisable recovery cause bpduguard\""
+      ],
+      "alternative_causes": [
+        "Port security MAC violation"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a1e",
+      "generated_at": "2026-08-17T15:48:52.523Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "FAIL",
+          "message": "Interface in err-disabled state"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c1a1f",
+      "run_at": "2026-08-17T15:48:52.523Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Security Analyst",
+      "explanation": "Working as intended. Removed unauthorized mini-switch and restored port.",
+      "reviewed_at": "2026-08-14T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a20"
+    },
+    "status": "verified",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a21",
+    "title": "Port Security Violation — Max MAC Count Exceeded",
+    "category": "Other",
+    "severity": "medium",
+    "device_type": "Switch",
+    "source_device": "Port Fa0/12",
+    "destination_device": "Switch SW1",
+    "symptoms": "Port Fa0/12 is shut down with amber LED. Interface status shows \"err-disabled\". Console log: %PORT_SECURITY-2-PSECURE_VIOLATION.",
+    "topology_notes": "Port Fa0/12 has \"switchport port-security maximum 1\" with violation action \"shutdown\". User plugged a second device into a desk hub.",
+    "show_commands": [
+      {
+        "command": "show port-security interface Fa0/12",
+        "output": "Port Security              : Enabled\nPort Status                : Secure-shutdown\nViolation Mode             : Shutdown\nMaximum MAC Addresses      : 1\nTotal MAC Addresses        : 1\nConfigured MAC Addresses   : 0\nSticky MAC Addresses       : 1\nLast Source Address:Vlan   : 0050.7966.6802:10\nSecurity Violation Count   : 1",
+        "_id": "6a832d6455a03a9e430c1a22"
+      }
+    ],
+    "expected_fault": "Port security maximum MAC count (1) exceeded, triggering secure-shutdown violation.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "Port Security",
+      "MAC Address",
+      "Err-Disabled",
+      "Violation"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Port Security violation on Fa0/12. A second MAC address (0050.7966.6802) was detected on a port configured with \"maximum 1\" and \"violation shutdown\", causing the switch to disable the interface.",
+      "confidence": "high",
+      "confidence_score": 98,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "Port Status: Secure-shutdown",
+        "Security Violation Count: 1",
+        "Last Source Address logged: 0050.7966.6802"
+      ],
+      "next_command": "show mac address-table interface Fa0/12",
+      "fix_steps": [
+        "Disconnect unauthorized secondary device",
+        "Clear sticky MAC if needed: SW1(config-if)# no switchport port-security mac-address sticky",
+        "Restore port: SW1(config-if)# shutdown then no shutdown"
+      ],
+      "alternative_causes": [
+        "BPDU Guard violation"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a23",
+      "generated_at": "2026-08-17T15:48:52.523Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "FAIL",
+          "message": "Interface in secure-shutdown state"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [],
+      "overall_status": "fail",
+      "_id": "6a832d6455a03a9e430c1a24",
+      "run_at": "2026-08-17T15:48:52.523Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Security Operations",
+      "explanation": "Accurate diagnosis. Reset port after removing unauthorized device.",
+      "reviewed_at": "2026-08-12T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a25"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  },
+  {
+    "_id": "6a832d6455a03a9e430c1a26",
+    "title": "Sticky MAC Address Mismatch After PC Replacement",
+    "category": "Other",
+    "severity": "low",
+    "device_type": "Switch",
+    "source_device": "New Replacement PC",
+    "destination_device": "Office Switch Port (Fa0/15)",
+    "symptoms": "IT technician replaced a defective desktop on Fa0/15. The new PC cannot obtain link or send packets.",
+    "topology_notes": "Port Fa0/15 has static/sticky MAC address bound to the old PC MAC (0011.2233.4455).",
+    "show_commands": [
+      {
+        "command": "show port-security address",
+        "output": "               Secure Mac Address Table\n-------------------------------------------------------------------\nVlan    Mac Address       Type                    Ports   Remaining Age\n----    -----------       ----                    -----   -------------\n  10    0011.2233.4455    SecureSticky            Fa0/15       -\n-------------------------------------------------------------------",
+        "_id": "6a832d6455a03a9e430c1a27"
+      }
+    ],
+    "expected_fault": "Sticky MAC 0011.2233.4455 does not match the new replacement PC MAC address.",
+    "expected_osi_layer": "Layer 2 (Data Link)",
+    "concept_tag": [
+      "Port Security",
+      "Sticky MAC",
+      "Hardware Replacement"
+    ],
+    "ai_diagnosis": {
+      "root_cause": "Port Fa0/15 has sticky MAC address 0011.2233.4455 hardcoded in running-config from the retired PC. The new PC has a different MAC address and is blocked by Port Security.",
+      "confidence": "high",
+      "confidence_score": 95,
+      "osi_layer": "Layer 2 (Data Link)",
+      "evidence": [
+        "SecureSticky MAC 0011.2233.4455 configured on Fa0/15"
+      ],
+      "next_command": "show running-config interface Fa0/15",
+      "fix_steps": [
+        "Clear old sticky MAC: SW1(config)# interface FastEthernet0/15",
+        "SW1(config-if)# no switchport port-security mac-address sticky 0011.2233.4455",
+        "SW1(config-if)# shutdown",
+        "SW1(config-if)# no shutdown"
+      ],
+      "alternative_causes": [
+        "Bad patch cable"
+      ],
+      "provider": "mock",
+      "_id": "6a832d6455a03a9e430c1a28",
+      "generated_at": "2026-08-17T15:48:52.523Z"
+    },
+    "rule_checker_result": {
+      "checks": [
+        {
+          "rule": "Interface Status",
+          "status": "PASS",
+          "message": "Config parsed"
+        }
+      ],
+      "rule_errors": [],
+      "rule_warnings": [],
+      "passed": [
+        "Port security enabled"
+      ],
+      "overall_status": "pass",
+      "_id": "6a832d6455a03a9e430c1a29",
+      "run_at": "2026-08-17T15:48:52.523Z"
+    },
+    "human_review": {
+      "decision": "accepted",
+      "reviewer": "Desktop Support Lead",
+      "explanation": "Cleared old sticky MAC. New PC registered its MAC and came online immediately.",
+      "reviewed_at": "2026-08-15T15:48:52.485Z",
+      "_id": "6a832d6455a03a9e430c1a2a"
+    },
+    "status": "approved",
+    "is_sample": true,
+    "tags": [],
+    "__v": 0,
+    "createdAt": "2026-08-17T15:48:52.531Z",
+    "updatedAt": "2026-08-17T15:48:52.531Z"
+  }
+]
